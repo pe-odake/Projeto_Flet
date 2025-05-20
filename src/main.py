@@ -69,12 +69,17 @@ def main(page: ft.Page):
 
         page.update()
 
-    btn_embaralhar = ft.IconButton(icon=ft.icons.SHUFFLE, on_click=atualizar_cartas)
+    btn_embaralhar = ft.IconButton(icon=ft.Igit add . cons.SHUFFLE, on_click=atualizar_cartas)
+    slot_carta_j1 = ft.Container(
+        width=70, height=100, left=200, top=0, border=ft.border.all(1)
+    )
+    
 
     # ADICIONAR OS ELEMENTOS NA PAGINA
     
     page.add(
         jogador1_container,ft.Divider(),
+        slot_carta_j1,
         jogador2_container,ft.Divider(),
         manilha_container,ft.Divider(),
         btn_embaralhar
