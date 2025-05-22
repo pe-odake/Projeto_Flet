@@ -1,91 +1,9 @@
 import flet as ft
-import requests
-
-
-def embaralhar():
-    truco_cards = [
-        'AS','2S','3S','4S','5S','6S','7S','QS','JS','KS',
-        'AH','2H','3H','4H','5H','6H','7H','QH','JH','KH',
-        'AD','2D','3D','4D','5D','6D','7D','QD','JD','KD',
-        'AC','2C','3C','4C','5C','6C','7C','QC','JC','KC'
-    ]
-
-    cards_str = ",".join(truco_cards)
-    url_create = f"https://deckofcardsapi.com/api/deck/new/shuffle/?cards={cards_str}"
-    #print(url_create)
-    response_create = requests.get(url_create).json()
-
-    if response_create["success"]:
-        deck_id = response_create["deck_id"]
-        url_draw = f"https://deckofcardsapi.com/api/deck/{deck_id}/draw/?count=7"
-        #print(url_draw)
-        response_draw = requests.get(url_draw).json()
-
-        if response_draw["success"]:
-            cartas = response_draw["cards"]
-            jogador1 = cartas[:3]
-            jogador2 = cartas[3:6]
-            manilha = cartas[6]
-            return jogador1, jogador2, manilha
-        
-    return [], [], None
-
+from truco_interface import truco_interface
 
 def main(page: ft.Page):
     page.title = "Truco"
     page.scroll = True
-
-    jogador1_container = ft.Column()
-    jogador2_container = ft.Column()
-    manilha_container = ft.Column()
-
-    def atualizar_cartas(e=None):
-        j1, j2, manilha = embaralhar()
-
-        jogador1_container.controls = [
-            ft.Text("Jogador 1:"),
-            ft.Row([ 
-                ft.Column([
-                    ft.Text(f"{c['value']} de {c['suit']}"),
-                    ft.Image(src=c['image'], width=100)
-                ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-                for c in j1
-            ], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
-        ]
-
-        jogador2_container.controls = [
-            ft.Text("Jogador 2:"),
-            ft.Row([
-                ft.Column([
-                    ft.Text(f"{c['value']} de {c['suit']}"),
-                    ft.Image(src=c['image'], width=100)
-                ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
-                for c in j2
-            ], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
-        ]
-
-        manilha_container.controls = [
-            ft.Text("Manilha:"),
-            ft.Image(src=manilha['image'], width=120) if manilha else ft.Text("Erro")
-        ]
-
-        page.update()
-
-    btn_embaralhar = ft.IconButton(icon=ft.Icons.SHUFFLE, on_click=atualizar_cartas)
-    # slot_carta_j1 = ft.Container(
-    #     width=70, height=100, left=200, top=0, border=ft.border.all(1)
-    # )
-    
-
-    # ADICIONAR OS ELEMENTOS NA PAGINA
-    
-    page.add(
-        jogador1_container,ft.Divider(),
-        # slot_carta_j1,
-        jogador2_container,ft.Divider(),
-        manilha_container,ft.Divider(),
-        btn_embaralhar
-    )
-    atualizar_cartas()
+    page.add(truco_interface(page))
 
 ft.app(target=main)
