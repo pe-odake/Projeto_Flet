@@ -8,14 +8,30 @@ class truco_interface(ft.Column):
         
         self.start_top = 0
         self.start_left = 0
-
+        
+        self.cartas_no_slot_jogada = []
+        
         self.jogador1_container = ft.Column()
         self.jogador2_container = ft.Column()
         self.manilha_container = ft.Column()
 
         self.btn_embaralhar = ft.IconButton(icon=ft.Icons.SHUFFLE, on_click=self.atualizar_cartas)
         self.slot = ft.Container(
-        width=70, height=100,left=200, top=170, border=ft.border.all(1)
+                width=70,
+                height=100,
+                left=200,
+                top=170,
+                border=ft.border.all(2),
+                border_radius=5
+        )
+
+        self.slot_jogada = ft.Container(
+                width=70,
+                height=100,
+                left=150,
+                top=300,
+                border=ft.border.all(2),
+                border_radius=5
         )
 
         self.controls = [
@@ -31,22 +47,18 @@ class truco_interface(ft.Column):
     def atualizar_cartas(self, e=None):
         j1, j2, manilha = TrucoGame.embaralhar()
 
-        # self.jogador1_container.controls = [
-        #     ft.Text("Jogador 1:"),
-        #     ft.Row([
-        #         self.criar_carta(c, jogador=1) for c in j1    
-        #     ], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
-        # ]
+        
+
+        slots_cartas = [self.criar_carta(c, jogador=1, index=i) for i, c in enumerate(j1)]
+        slots = [item[0] for item in slots_cartas]
+        cartas = [item[1] for item in slots_cartas]
 
         self.jogador1_container.controls = [
             ft.Text("Jogador 1:"),
             ft.Stack(
-                controls=[
-                    *[self.criar_carta(c, jogador=1, index=i) for i, c in enumerate(j1)],
-                    self.slot
-                ],
-                width=500,
-                height=300
+                controls=[*slots, *cartas, self.slot_jogada],
+                width=600,
+                height=400
             )
         ]
 
@@ -85,19 +97,28 @@ class truco_interface(ft.Column):
         e.control.update()
 
     def drop(self, e: ft.DragEndEvent):
-        top_diff = abs(e.control.top - self.slot.top)
-        left_diff = abs(e.control.left - self.slot.left)
+        def is_in_slot(slot):
+            return abs(e.control.top - slot.top) < 20 and abs(e.control.left - slot.left) < 20
 
-        if top_diff < 20 and left_diff < 20:
-            # Vai pro slot
-            e.control.top = self.slot.top
-            e.control.left = self.slot.left
+        # Tentativa de jogar no slot_jogada
+        if is_in_slot(self.slot_jogada):
+            if len(self.cartas_no_slot_jogada) >= 1:
+                # Já tem uma carta, volta à posição original
+                e.control.top = self.start_top
+                e.control.left = self.start_left
+            else:
+                # Slot está livre, pode posicionar
+                e.control.top = self.slot_jogada.top
+                e.control.left = self.slot_jogada.left
+                self.cartas_no_slot_jogada.append(e.control)
+
         else:
-            # Volta para onde estava antes do arrasto
+            # Não caiu no slot_jogada, volta para a posição original
             e.control.top = self.start_top
             e.control.left = self.start_left
 
         e.control.update()
+
     
     # FIM DELAS    
     
@@ -105,26 +126,37 @@ class truco_interface(ft.Column):
         imagem = 'back_cards.png' if jogador == 2 else carta['image']
         
         left_pos = 50 + index * 100  # evita sobreposição
-        top_pos = 20
+        top_pos = 170
 
         if jogador == 1:
-            return ft.GestureDetector(
-            mouse_cursor=ft.MouseCursor.MOVE,
-            drag_interval=5,
-            on_pan_start=self.start_drag,
-            on_pan_update=self.drag,
-            on_pan_end=self.drop,
-            left=left_pos,
-            top=top_pos,
-            content=ft.Container(
-                content=ft.Image(imagem),
-                width=100,
+            slot = ft.Container(
+                width=70,
                 height=100,
+                left=left_pos,
+                top=top_pos,
+                border=ft.border.all(2),
                 border_radius=5
-            ),
-        )
+            )
+
+            carta_widget = ft.GestureDetector(
+                mouse_cursor=ft.MouseCursor.MOVE,
+                drag_interval=5,
+                on_pan_start=self.start_drag,
+                on_pan_update=self.drag,
+                on_pan_end=self.drop,
+                left=left_pos,
+                top=top_pos,
+                content=ft.Container(
+                    content=ft.Image(imagem),
+                    width=70,
+                    height=100,
+                    border_radius=5
+                ),
+            )
+
+            return (slot, carta_widget)
+        
         else:
             return ft.Column([
-                # ft.Text(f"{carta['value']} de {carta['suit']}"),
                 ft.Image(src=imagem, width=100)
             ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
