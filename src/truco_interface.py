@@ -15,6 +15,16 @@ class truco_interface(ft.Column):
         self.jogador2_container = ft.Column()
         self.manilha_container = ft.Column()
 
+        self.cartas_jogador1 = []
+        self.cartas_jogador2 = []  # Lista de cartas do jogador 2
+
+        self.slot_jogada2 = ft.Row(
+            controls=[],
+            alignment=ft.MainAxisAlignment.CENTER
+        )
+
+        self.manilha = ft.Container()  # Container que armazenará a imagem da manilha
+
         self.btn_embaralhar = ft.IconButton(icon=ft.Icons.SHUFFLE, on_click=self.atualizar_cartas)
         self.slot = ft.Container(
                 width=70,
@@ -34,8 +44,15 @@ class truco_interface(ft.Column):
                 border_radius=5
         )
 
+        self.btn_confirmar_jogada = ft.ElevatedButton(
+            text="Confirmar Jogada",
+            on_click=self.confirmar_jogada
+        )
+
         self.controls = [
             self.jogador1_container, ft.Divider(),
+            self.btn_confirmar_jogada,
+            self.slot_jogada2,
             self.jogador2_container, 
             ft.Divider(), 
             self.manilha_container,
@@ -47,12 +64,19 @@ class truco_interface(ft.Column):
     def atualizar_cartas(self, e=None):
         j1, j2, manilha = TrucoGame.embaralhar()
 
-        
+        self.cartas_jogador2 = j2  # <-- ADICIONE ISSO!
+
+        self.cartas_no_slot_jogada.clear()  # limpa o slot
+        self.cartas_jogador1.clear()  # limpa a lista de cartas
 
         slots_cartas = [self.criar_carta(c, jogador=1, index=i) for i, c in enumerate(j1)]
         slots = [item[0] for item in slots_cartas]
         cartas = [item[1] for item in slots_cartas]
 
+        # Salva as cartas do jogador 1
+        self.cartas_jogador1 = cartas
+
+        # Atualiza a interface do jogador 1 com Stack (slots + cartas + slot de jogada)
         self.jogador1_container.controls = [
             ft.Text("Jogador 1:"),
             ft.Stack(
@@ -62,7 +86,7 @@ class truco_interface(ft.Column):
             )
         ]
 
-
+        # Atualiza a interface do jogador 2
         self.jogador2_container.controls = [
             ft.Text("Jogador 2:"),
             ft.Row([
@@ -70,12 +94,17 @@ class truco_interface(ft.Column):
             ], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
         ]
 
+        # Atualiza a manilha
         self.manilha_container.controls = [
             ft.Text("Manilha:"),
-            ft.Image(src=manilha['image'], width=120) if manilha else ft.Text("Erro")
+            ft.Image(src=manilha['image'], width=120, data=manilha) if manilha else ft.Text("Erro")
         ]
 
+        self.manilha.content = ft.Image(src=manilha['image'], width=120)
+        self.manilha.data = manilha
+
         self.page.update()
+
     
     # FUNÇÕES DO DRAG
     
@@ -100,24 +129,52 @@ class truco_interface(ft.Column):
         def is_in_slot(slot):
             return abs(e.control.top - slot.top) < 20 and abs(e.control.left - slot.left) < 20
 
-        # Tentativa de jogar no slot_jogada
+        stack_cartas = self.jogador1_container.controls[1]  # O Stack com cartas + slots
+
         if is_in_slot(self.slot_jogada):
-            if len(self.cartas_no_slot_jogada) >= 1:
-                # Já tem uma carta, volta à posição original
-                e.control.top = self.start_top
-                e.control.left = self.start_left
-            else:
-                # Slot está livre, pode posicionar
-                e.control.top = self.slot_jogada.top
-                e.control.left = self.slot_jogada.left
-                self.cartas_no_slot_jogada.append(e.control)
+            # Remove carta anterior do slot se existir
+            if self.cartas_no_slot_jogada:
+                carta_antiga = self.cartas_no_slot_jogada.pop()
+                slot_antigo = carta_antiga.data["slot"]
+                slot_antigo.visible = True
+                carta_antiga.top = carta_antiga.data["original_top"]
+                carta_antiga.left = carta_antiga.data["original_left"]
+                stack_cartas.controls.append(carta_antiga)
+                self.cartas_jogador1.append(carta_antiga)
+
+            # Posiciona nova carta
+            e.control.top = self.slot_jogada.top
+            e.control.left = self.slot_jogada.left
+
+            # Esconde slot da carta jogada
+            slot_atual = e.control.data["slot"]
+            slot_atual.visible = False
+
+            if e.control not in stack_cartas.controls:
+                stack_cartas.controls.append(e.control)
+
+            self.cartas_no_slot_jogada.append(e.control)
+
+            if e.control in self.cartas_jogador1:
+                self.cartas_jogador1.remove(e.control)
 
         else:
-            # Não caiu no slot_jogada, volta para a posição original
-            e.control.top = self.start_top
-            e.control.left = self.start_left
+            # Volta para posição original
+            e.control.top = e.control.data["original_top"]
+            e.control.left = e.control.data["original_left"]
+
+            slot = e.control.data["slot"]
+            slot.visible = True  # Reexibe o slot
+
+            if e.control not in stack_cartas.controls:
+                stack_cartas.controls.append(e.control)
+
+            if e.control not in self.cartas_jogador1:
+                self.cartas_jogador1.append(e.control)
 
         e.control.update()
+        self.page.update()
+
 
     
     # FIM DELAS    
@@ -134,7 +191,7 @@ class truco_interface(ft.Column):
                 height=100,
                 left=left_pos,
                 top=top_pos,
-                border=ft.border.all(2),
+                border=ft.border.all(2, ft.Colors.BLUE),
                 border_radius=5
             )
 
@@ -146,6 +203,7 @@ class truco_interface(ft.Column):
                 on_pan_end=self.drop,
                 left=left_pos,
                 top=top_pos,
+                data={"original_top": top_pos, "original_left": left_pos, "slot": slot},  # <- salva o slot
                 content=ft.Container(
                     content=ft.Image(imagem),
                     width=70,
@@ -154,9 +212,62 @@ class truco_interface(ft.Column):
                 ),
             )
 
+
             return (slot, carta_widget)
+
         
         else:
             return ft.Column([
                 ft.Image(src=imagem, width=100)
             ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
+
+# CONFIRMAR JOGADA
+
+    def confirmar_jogada(self, e):
+        if not self.cartas_no_slot_jogada:
+            self.page.snack_bar = ft.SnackBar(ft.Text("Jogador 1 precisa jogar uma carta."))
+            self.page.snack_bar.open = True
+            self.page.update()
+            return
+
+        # Jogador 2 joga automaticamente a primeira carta da mão
+        if not self.slot_jogada2.controls:
+            primeira_carta_j2 = self.cartas_jogador2[0]
+            self.cartas_jogador2.remove(primeira_carta_j2)
+            self.slot_jogada2.controls.append(
+                ft.Image(src=primeira_carta_j2['image'], width=100, data=primeira_carta_j2)
+            )
+            self.slot_jogada2.update()
+
+        carta1 = self.get_card_info(self.cartas_no_slot_jogada[0])
+        carta2 = self.slot_jogada2.controls[0].data
+        manilha_base = self.manilha.data
+
+        vencedor = TrucoGame.comparar_cartas(carta1, carta2, manilha_base)
+
+        if vencedor == 1:
+            resultado = "Jogador 1 venceu a rodada!"
+        elif vencedor == 2:
+            resultado = "Jogador 2 venceu a rodada!"
+        else:
+            resultado = "Empate na rodada!"
+
+        print(f"Resultado: {resultado}")
+        print(f"Jogador 1 jogou: {carta1['value']}")
+        print(f"Jogador 2 jogou: {carta2['value']}")
+        print(f"Manilha: {manilha_base['value']}")
+
+        self.page.snack_bar = ft.SnackBar(ft.Text(resultado))
+        self.page.snack_bar.open = True
+        self.page.update()
+
+
+
+    def get_card_info(self, carta_widget):
+        image_src = carta_widget.content.content.src  # Acessa ft.Image.src
+        nome_arquivo = image_src.split('/')[-1].split('.')[0]  # Ex: '4H'
+        return {
+            'code': nome_arquivo,
+            'value': nome_arquivo[:-1],
+            'suit': nome_arquivo[-1]
+        }

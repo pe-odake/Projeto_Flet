@@ -1,6 +1,12 @@
 import requests
 
 class TrucoGame:
+    # Ordem das cartas normais (sem manilhas)
+    ordem_cartas = ['4', '5', '6', '7', 'Q', 'J', 'K', 'A', '2', '3']
+
+    # Ordem de força dos naipes das manilhas
+    ordem_naipes = ['D', 'S', 'H', 'C']  # Paus < Ouros < Copas < Espadas
+
     @staticmethod
     def embaralhar():
         truco_cards = [
@@ -27,3 +33,54 @@ class TrucoGame:
                 return jogador1, jogador2, manilha
 
         return [], [], None
+    
+
+    @staticmethod
+    def proxima_carta(valor):
+        ordem = TrucoGame.ordem_cartas
+        idx = ordem.index(valor)
+        return ordem[(idx + 1) % len(ordem)]  # circular (3 -> 4)
+
+    @staticmethod
+    def comparar_cartas(carta1, carta2, manilha_base):
+        def valor(c):
+            return c['code'][:-1]  # Ex: '4C' -> '4'
+
+        def naipe(c):
+            return c['code'][-1]  # Ex: '4C' -> 'C'
+
+        v1, v2 = valor(carta1), valor(carta2)
+        n1, n2 = naipe(carta1), naipe(carta2)
+
+        # Descobre qual é o valor das manilhas com base na carta virada
+        valor_manilha = TrucoGame.proxima_carta(valor(manilha_base))
+
+        # Verifica se as cartas são manilhas
+        e1_manilha = v1 == valor_manilha
+        e2_manilha = v2 == valor_manilha
+
+        # Comparação de manilhas
+        if e1_manilha and not e2_manilha:
+            return 1
+        if e2_manilha and not e1_manilha:
+            return 2
+        if e1_manilha and e2_manilha:
+            # desempate por naipe
+            i1 = TrucoGame.ordem_naipes.index(n1)
+            i2 = TrucoGame.ordem_naipes.index(n2)
+            if i1 > i2:
+                return 1
+            elif i2 > i1:
+                return 2
+            else:
+                return 0  # mesmo valor e mesmo naipe (raro)
+
+        # Comparação normal se nenhuma for manilha
+        i1 = TrucoGame.ordem_cartas.index(v1)
+        i2 = TrucoGame.ordem_cartas.index(v2)
+        if i1 > i2:
+            return 1
+        elif i2 > i1:
+            return 2
+        else:
+            return 0
