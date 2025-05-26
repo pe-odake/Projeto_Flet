@@ -17,11 +17,12 @@ class truco_interface(ft.Column):
 
         self.cartas_jogador1 = []
         self.cartas_jogador2 = []  # Lista de cartas do jogador 2
+        
+        self.pontos_j1 = 0
+        self.pontos_j2 = 0
+        self.win_rodadas_j1 = 0
+        self.win_rodadas_j2 = 0
 
-        self.slot_jogada2 = ft.Row(
-            controls=[],
-            alignment=ft.MainAxisAlignment.CENTER
-        )
 
         self.manilha = ft.Container()  # Container que armazenará a imagem da manilha
 
@@ -43,16 +44,31 @@ class truco_interface(ft.Column):
                 border=ft.border.all(2),
                 border_radius=5
         )
-
+        
+        self.slot_jogada_bot = ft.Container(
+            width=70,
+            height=100,
+            left=350,
+            top=300,
+            border=ft.border.all(2),
+            border_radius=5,
+            content=None  # carta do bot será colocada aqui
+        )
+        
         self.btn_confirmar_jogada = ft.ElevatedButton(
             text="Confirmar Jogada",
             on_click=self.confirmar_jogada
         )
+        
+        self.placar_jogo = ft.Text(f"Jogador 1 - {self.pontos_j1} |\---/| Jogador 2 - {self.pontos_j2}", size=26, weight=ft.FontWeight.BOLD)
+        self.placar_rodada = ft.Text(f"Jogador 1: {self.win_rodadas_j1}\nJogador 2: {self.win_rodadas_j2}", size=18)#, weight=ft.FontWeight.BOLD
 
         self.controls = [
+            self.placar_jogo,
+            self.placar_rodada,
             self.jogador1_container, ft.Divider(),
             self.btn_confirmar_jogada,
-            self.slot_jogada2,
+            self.slot_jogada_bot,
             self.jogador2_container, 
             ft.Divider(), 
             self.manilha_container,
@@ -218,7 +234,7 @@ class truco_interface(ft.Column):
         
         else:
             return ft.Column([
-                ft.Image(src=imagem, width=100)
+                ft.Image(src=imagem, width=70)
             ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
 # CONFIRMAR JOGADA
@@ -230,37 +246,96 @@ class truco_interface(ft.Column):
             self.page.update()
             return
 
-        # Jogador 2 joga automaticamente a primeira carta da mão
-        if not self.slot_jogada2.controls:
-            primeira_carta_j2 = self.cartas_jogador2[0]
-            self.cartas_jogador2.remove(primeira_carta_j2)
-            self.slot_jogada2.controls.append(
-                ft.Image(src=primeira_carta_j2['image'], width=100, data=primeira_carta_j2)
-            )
-            self.slot_jogada2.update()
-
+        # Carta jogada pelo jogador 1
         carta1 = self.get_card_info(self.cartas_no_slot_jogada[0])
-        carta2 = self.slot_jogada2.controls[0].data
+
+        # Bot escolhe a primeira carta da sua mão (jogador 2)
+        if self.cartas_jogador2:
+            carta_bot = self.cartas_jogador2.pop(0)  # remove a carta da lista e pega ela
+
+            # Atualiza o slot do bot com a carta jogada
+            self.slot_jogada_bot.content = ft.Image(
+                src=carta_bot['image'],
+                width=70,
+                data=carta_bot
+            )
+
+            # Atualiza a mão visual do jogador 2 (mostrar as cartas restantes)
+            nova_mao_j2 = []
+            for i, c in enumerate(self.cartas_jogador2):
+                nova_mao_j2.append(self.criar_carta(c, jogador=2))
+
+            # Se quiser mostrar até 3 slots (com espaços vazios)
+            while len(nova_mao_j2) < 3:
+                nova_mao_j2.append(ft.Container(width=70, height=100, border=ft.border.all(2, ft.Colors.GREY), border_radius=5))
+
+            self.jogador2_container.controls[1] = ft.Row(nova_mao_j2, spacing=20, alignment=ft.MainAxisAlignment.CENTER)
+
+        else:
+            # Caso não tenha carta, esvazia o slot do bot
+            self.slot_jogada_bot.content = None
+
+        self.page.update()
+
+        # Carta jogada pelo bot para comparar
+        carta2 = carta_bot
+
         manilha_base = self.manilha.data
 
         vencedor = TrucoGame.comparar_cartas(carta1, carta2, manilha_base)
 
         if vencedor == 1:
             resultado = "Jogador 1 venceu a rodada!"
+            self.win_rodadas_j1 += 1
         elif vencedor == 2:
             resultado = "Jogador 2 venceu a rodada!"
+            self.win_rodadas_j2 += 1
         else:
             resultado = "Empate na rodada!"
+            self.win_rodadas_j1 += 1
+            self.win_rodadas_j2 += 1
+
+        self.placar_rodada.value = f"Jogador 1 - {self.win_rodadas_j1}\nJogador 2 - {self.win_rodadas_j2}"
 
         print(f"Resultado: {resultado}")
         print(f"Jogador 1 jogou: {carta1['value']}")
         print(f"Jogador 2 jogou: {carta2['value']}")
         print(f"Manilha: {manilha_base['value']}")
 
+        if self.win_rodadas_j1 == 2 or self.win_rodadas_j2 == 2:
+            if self.win_rodadas_j1 == 2:
+                self.pontos_j1 += 1
+            else:
+                self.pontos_j2 += 1
+
+            # Reseta rodadas
+            self.win_rodadas_j1 = 0
+            self.win_rodadas_j2 = 0
+
+            # Atualiza placares
+            self.placar_jogo.value = f"Jogador 1 - {self.pontos_j1} |\---/| Jogador 2 - {self.pontos_j2}"
+            self.placar_rodada.value = f"Jogador 1 - {self.win_rodadas_j1}\nJogador 2 - {self.win_rodadas_j2}"
+
+            # Inicia nova rodada
+            self.page.run_task(self.nova_rodada)
+
         self.page.snack_bar = ft.SnackBar(ft.Text(resultado))
         self.page.snack_bar.open = True
+
+        # Remover carta jogada do slot do jogador 1
+        carta_widget = self.cartas_no_slot_jogada.pop()
+        stack_cartas = self.jogador1_container.controls[1]  # Stack
+        if carta_widget in stack_cartas.controls:
+            stack_cartas.controls.remove(carta_widget)
+
         self.page.update()
 
+        # Verifica se acabou as cartas (fim da rodada)
+        if not self.cartas_jogador1 or not self.cartas_jogador2:
+            self.page.snack_bar = ft.SnackBar(ft.Text("Fim da rodada! Embaralhando novas cartas..."))
+            self.page.snack_bar.open = True
+            self.page.update()
+            self.page.run_task(self.nova_rodada)  # roda nova rodada com delay
 
 
     def get_card_info(self, carta_widget):
@@ -271,3 +346,8 @@ class truco_interface(ft.Column):
             'value': nome_arquivo[:-1],
             'suit': nome_arquivo[-1]
         }
+
+    async def nova_rodada(self):
+        import asyncio
+        await asyncio.sleep(1)  # Pequeno delay para mostrar o resultado
+        self.atualizar_cartas()

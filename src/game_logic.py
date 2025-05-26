@@ -56,6 +56,7 @@ class TrucoGame:
         valor_manilha = TrucoGame.proxima_carta(valor(manilha_base))
 
         # Verifica se as cartas são manilhas
+        # 1 para j1, e 2 para j2
         e1_manilha = v1 == valor_manilha
         e2_manilha = v2 == valor_manilha
 
@@ -73,7 +74,7 @@ class TrucoGame:
             elif i2 > i1:
                 return 2
             else:
-                return 0  # mesmo valor e mesmo naipe (raro)
+                return 0  # mesmo valor e mesmo naipe - impossivel
 
         # Comparação normal se nenhuma for manilha
         i1 = TrucoGame.ordem_cartas.index(v1)
