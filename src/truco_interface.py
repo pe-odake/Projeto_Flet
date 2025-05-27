@@ -1,5 +1,7 @@
 import flet as ft
 from game_logic import TrucoGame
+from bot import Bot  
+import random
 
 class truco_interface(ft.Column):
     def __init__(self, page: ft.Page):
@@ -23,6 +25,7 @@ class truco_interface(ft.Column):
         self.win_rodadas_j1 = 0
         self.win_rodadas_j2 = 0
 
+        self.vez_do_jogador = 1  
 
         self.manilha = ft.Container()  # Container que armazenará a imagem da manilha
 
@@ -60,6 +63,13 @@ class truco_interface(ft.Column):
             on_click=self.confirmar_jogada
         )
         
+        self.valor_truco_atual = 1  # Pontuação atual da rodada
+        self.btn_truco = ft.ElevatedButton(
+            text="Pedir Truco",
+            on_click=self.pedir_truco
+        )
+        self.controls.insert(3, self.btn_truco)  # Insere antes do confirmar jogada
+        
         self.placar_jogo = ft.Text(f"Jogador 1 - {self.pontos_j1} |\---/| Jogador 2 - {self.pontos_j2}", size=26, weight=ft.FontWeight.BOLD)
         self.placar_rodada = ft.Text(f"Jogador 1: {self.win_rodadas_j1}\nJogador 2: {self.win_rodadas_j2}", size=18)#, weight=ft.FontWeight.BOLD
 
@@ -68,6 +78,7 @@ class truco_interface(ft.Column):
             self.placar_rodada,
             self.jogador1_container, ft.Divider(),
             self.btn_confirmar_jogada,
+            self.btn_truco,
             self.slot_jogada_bot,
             self.jogador2_container, 
             ft.Divider(), 
@@ -78,6 +89,9 @@ class truco_interface(ft.Column):
         self.atualizar_cartas()
 
     def atualizar_cartas(self, e=None):
+
+        self.valor_truco_atual = 1
+        self.btn_truco.text = "Pedir Truco"
         j1, j2, manilha = TrucoGame.embaralhar()
 
         self.cartas_jogador2 = j2  # <-- ADICIONE ISSO!
@@ -234,7 +248,7 @@ class truco_interface(ft.Column):
         
         else:
             return ft.Column([
-                ft.Image(src=imagem, width=70)
+                ft.Image(src=carta['image'], width=70)
             ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
 # CONFIRMAR JOGADA
@@ -251,9 +265,13 @@ class truco_interface(ft.Column):
 
         # Bot escolhe a primeira carta da sua mão (jogador 2)
         if self.cartas_jogador2:
-            carta_bot = self.cartas_jogador2.pop(0)  # remove a carta da lista e pega ela
+            modo = random.choices(["agressivo", "leve", "aleatorio"], weights=[0.3, 0.3, 0.4])[0]
 
-            # Atualiza o slot do bot com a carta jogada
+            bot = Bot(self.cartas_jogador2, self.manilha.data, modo=modo)
+            carta_bot = bot.escolher_carta(carta_adversario=carta1, j1_tem_ponto=self.win_rodadas_j1 == 1)
+            print(carta_bot['image'])
+            self.cartas_jogador2 = bot.cartas 
+
             self.slot_jogada_bot.content = ft.Image(
                 src=carta_bot['image'],
                 width=70,
@@ -274,6 +292,7 @@ class truco_interface(ft.Column):
         else:
             # Caso não tenha carta, esvazia o slot do bot
             self.slot_jogada_bot.content = None
+            print('TESTE QUE O SLOT DO BOT NÃO ESTA RECEBENDO NADA')
 
         self.page.update()
 
@@ -287,9 +306,11 @@ class truco_interface(ft.Column):
         if vencedor == 1:
             resultado = "Jogador 1 venceu a rodada!"
             self.win_rodadas_j1 += 1
+            self.vez_do_jogador = 1
         elif vencedor == 2:
             resultado = "Jogador 2 venceu a rodada!"
             self.win_rodadas_j2 += 1
+            self.vez_do_jogador = 2
         else:
             resultado = "Empate na rodada!"
             self.win_rodadas_j1 += 1
@@ -304,9 +325,13 @@ class truco_interface(ft.Column):
 
         if self.win_rodadas_j1 == 2 or self.win_rodadas_j2 == 2:
             if self.win_rodadas_j1 == 2:
-                self.pontos_j1 += 1
+                self.pontos_j1 += self.valor_truco_atual
             else:
-                self.pontos_j2 += 1
+                self.pontos_j2 += self.valor_truco_atual
+
+            # Reseta o valor do truco para 1 após o término da rodada
+            self.valor_truco_atual = 1
+            self.btn_truco.text = "Pedir Truco"
 
             # Reseta rodadas
             self.win_rodadas_j1 = 0
@@ -316,8 +341,8 @@ class truco_interface(ft.Column):
             self.placar_jogo.value = f"Jogador 1 - {self.pontos_j1} |\---/| Jogador 2 - {self.pontos_j2}"
             self.placar_rodada.value = f"Jogador 1 - {self.win_rodadas_j1}\nJogador 2 - {self.win_rodadas_j2}"
 
-            # Inicia nova rodada
             self.page.run_task(self.nova_rodada)
+
 
         self.page.snack_bar = ft.SnackBar(ft.Text(resultado))
         self.page.snack_bar.open = True
@@ -349,5 +374,53 @@ class truco_interface(ft.Column):
 
     async def nova_rodada(self):
         import asyncio
-        await asyncio.sleep(1)  # Pequeno delay para mostrar o resultado
+        await asyncio.sleep(1)
         self.atualizar_cartas()
+
+        # Se for a vez do bot começar
+        if self.vez_do_jogador == 2:
+            carta1 = None
+            modo = random.choices(["agressivo", "leve", "aleatorio"], weights=[0.9, 0.1, 0.0][0])
+            bot = Bot(self.cartas_jogador2, self.manilha.data, modo=modo)
+            carta_bot = bot.escolher_carta(carta_adversario=None, j1_tem_ponto=self.win_rodadas_j1 == 1)
+            self.cartas_jogador2 = bot.cartas
+
+            self.slot_jogada_bot.content = ft.Image(
+                src=carta_bot['image'],
+                width=70,
+                data=carta_bot
+            )
+            self.page.update()
+    
+    def pedir_truco(self, e):
+        # Define a próxima pontuação do Truco
+        proximo_valor = {1: 3, 3: 6, 6: 9, 9: 12}
+        if self.valor_truco_atual not in proximo_valor:
+            self.page.snack_bar = ft.SnackBar(ft.Text("Já está no valor máximo de Truco!"))
+            self.page.snack_bar.open = True
+            self.page.update()
+            return
+
+        novo_valor = proximo_valor[self.valor_truco_atual]
+
+        # Bot decide se aceita
+        aceitou = random.random() < 0.3  
+
+        if aceitou:
+            self.valor_truco_atual = novo_valor
+            self.btn_truco.text = f"Pedir {proximo_valor.get(novo_valor, novo_valor)}"
+            print(f"Bot aceitou! Truco agora vale {self.valor_truco_atual} pontos.")
+        else:
+            self.page.snack_bar = ft.SnackBar(ft.Text("Bot correu! Você ganhou a rodada."))
+            self.pontos_j1 += self.valor_truco_atual
+
+            # Atualiza placar e reseta rodada
+            self.placar_jogo.value = f"Jogador 1 - {self.pontos_j1} |\---/| Jogador 2 - {self.pontos_j2}"
+            self.win_rodadas_j1 = 0
+            self.win_rodadas_j2 = 0
+            self.valor_truco_atual = 1
+            self.btn_truco.text = "Pedir Truco"
+            self.page.run_task(self.nova_rodada)
+
+        self.page.snack_bar.open = True
+        self.page.update()
