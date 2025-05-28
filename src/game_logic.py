@@ -5,7 +5,7 @@ class TrucoGame:
     ordem_cartas = ['4', '5', '6', '7', 'Q', 'J', 'K', 'A', '2', '3']
 
     # Ordem de força dos naipes das manilhas
-    ordem_naipes = ['D', 'S', 'H', 'C']  # Paus < Ouros < Copas < Espadas
+    ordem_naipes = ['D', 'S', 'H', 'C']  # Ouros < Espadas < Copas < Paus
 
     @staticmethod
     def embaralhar():
@@ -44,15 +44,14 @@ class TrucoGame:
     @staticmethod
     def comparar_cartas(carta1, carta2, manilha_base):
         def valor(c):
-            return c['code'][:-1]  # Ex: '4C' -> '4'
+            return c['code'][:-1]  # 4C TIRA A ULTIMO CARACTERE = 4
 
         def naipe(c):
-            return c['code'][-1]  # Ex: '4C' -> 'C'
+            return c['code'][-1]  # MESMA COISA MAS TIRA O 1° CARACTERE
 
         v1, v2 = valor(carta1), valor(carta2)
         n1, n2 = naipe(carta1), naipe(carta2)
 
-        # Descobre qual é o valor das manilhas com base na carta virada
         valor_manilha = TrucoGame.proxima_carta(valor(manilha_base))
 
         # Verifica se as cartas são manilhas
@@ -60,7 +59,6 @@ class TrucoGame:
         e1_manilha = v1 == valor_manilha
         e2_manilha = v2 == valor_manilha
 
-        # Comparação de manilhas
         if e1_manilha and not e2_manilha:
             return 1
         if e2_manilha and not e1_manilha:

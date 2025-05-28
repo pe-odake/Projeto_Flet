@@ -2,6 +2,8 @@ import flet as ft
 from game_logic import TrucoGame
 from bot import Bot  
 import random
+import asyncio
+
 
 class truco_interface(ft.Column):
     def __init__(self, page: ft.Page):
@@ -18,7 +20,7 @@ class truco_interface(ft.Column):
         self.manilha_container = ft.Column()
 
         self.cartas_jogador1 = []
-        self.cartas_jogador2 = []  # Lista de cartas do jogador 2
+        self.cartas_jogador2 = []  
         
         self.pontos_j1 = 0
         self.pontos_j2 = 0
@@ -27,7 +29,7 @@ class truco_interface(ft.Column):
 
         self.vez_do_jogador = 1  
 
-        self.manilha = ft.Container()  # Container que armazenará a imagem da manilha
+        self.manilha = ft.Container()  
 
         self.btn_embaralhar = ft.IconButton(icon=ft.Icons.SHUFFLE, on_click=self.atualizar_cartas)
         self.slot = ft.Container(
@@ -51,11 +53,11 @@ class truco_interface(ft.Column):
         self.slot_jogada_bot = ft.Container(
             width=70,
             height=100,
-            left=350,
-            top=300,
+            # left=350,
+            # top=300,
             border=ft.border.all(2),
             border_radius=5,
-            content=None  # carta do bot será colocada aqui
+            content=None 
         )
         
         self.btn_confirmar_jogada = ft.ElevatedButton(
@@ -63,14 +65,14 @@ class truco_interface(ft.Column):
             on_click=self.confirmar_jogada
         )
         
-        self.valor_truco_atual = 1  # Pontuação atual da rodada
+        self.valor_truco_atual = 1 
         self.btn_truco = ft.ElevatedButton(
             text="Pedir Truco",
             on_click=self.pedir_truco
         )
-        self.controls.insert(3, self.btn_truco)  # Insere antes do confirmar jogada
+        #self.controls.insert(3, self.btn_truco)  
         
-        self.placar_jogo = ft.Text(f"Jogador 1 - {self.pontos_j1} |\---/| Jogador 2 - {self.pontos_j2}", size=26, weight=ft.FontWeight.BOLD)
+        self.placar_jogo = ft.Text(f"Jogador 1 - {self.pontos_j1} ----- Jogador 2 - {self.pontos_j2}", size=26, weight=ft.FontWeight.BOLD)
         self.placar_rodada = ft.Text(f"Jogador 1: {self.win_rodadas_j1}\nJogador 2: {self.win_rodadas_j2}", size=18)#, weight=ft.FontWeight.BOLD
 
         self.controls = [
@@ -94,10 +96,10 @@ class truco_interface(ft.Column):
         self.btn_truco.text = "Pedir Truco"
         j1, j2, manilha = TrucoGame.embaralhar()
 
-        self.cartas_jogador2 = j2  # <-- ADICIONE ISSO!
+        self.cartas_jogador2 = j2  
 
-        self.cartas_no_slot_jogada.clear()  # limpa o slot
-        self.cartas_jogador1.clear()  # limpa a lista de cartas
+        self.cartas_no_slot_jogada.clear() 
+        self.cartas_jogador1.clear()  # LIMPA OS SLOTS
 
         slots_cartas = [self.criar_carta(c, jogador=1, index=i) for i, c in enumerate(j1)]
         slots = [item[0] for item in slots_cartas]
@@ -124,9 +126,8 @@ class truco_interface(ft.Column):
             ], spacing=20, alignment=ft.MainAxisAlignment.CENTER)
         ]
 
-        # Atualiza a manilha
         self.manilha_container.controls = [
-            ft.Text("Manilha:"),
+            ft.Text("Vira:"),
             ft.Image(src=manilha['image'], width=120, data=manilha) if manilha else ft.Text("Erro")
         ]
 
@@ -138,13 +139,13 @@ class truco_interface(ft.Column):
     
     # FUNÇÕES DO DRAG
     
-    def place(card, slot):
-        card.top = slot.top
-        card.left = slot.left
+    # def place(card, slot):
+    #     card.top = slot.top
+    #     card.left = slot.left
 
-    def bounce_back(game, card):
-        card.top = game.start_top
-        card.left = game.start_left
+    # def bounce_back(game, card):
+    #     card.top = game.start_top
+    #     card.left = game.start_left
 
     def start_drag(self, e: ft.DragStartEvent):
         self.start_top = e.control.top
@@ -172,11 +173,9 @@ class truco_interface(ft.Column):
                 stack_cartas.controls.append(carta_antiga)
                 self.cartas_jogador1.append(carta_antiga)
 
-            # Posiciona nova carta
             e.control.top = self.slot_jogada.top
             e.control.left = self.slot_jogada.left
 
-            # Esconde slot da carta jogada
             slot_atual = e.control.data["slot"]
             slot_atual.visible = False
 
@@ -212,7 +211,7 @@ class truco_interface(ft.Column):
     def criar_carta(self, carta, jogador, index=0):
         imagem = 'back_cards.png' if jogador == 2 else carta['image']
         
-        left_pos = 50 + index * 100  # evita sobreposição
+        left_pos = 50 + index * 100  # ESPAÇAMENTO
         top_pos = 170
 
         if jogador == 1:
@@ -233,7 +232,7 @@ class truco_interface(ft.Column):
                 on_pan_end=self.drop,
                 left=left_pos,
                 top=top_pos,
-                data={"original_top": top_pos, "original_left": left_pos, "slot": slot},  # <- salva o slot
+                data={"original_top": top_pos, "original_left": left_pos, "slot": slot},  
                 content=ft.Container(
                     content=ft.Image(imagem),
                     width=70,
@@ -248,7 +247,7 @@ class truco_interface(ft.Column):
         
         else:
             return ft.Column([
-                ft.Image(src=carta['image'], width=70)
+                ft.Image(src=imagem, width=70)
             ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER)
 
 # CONFIRMAR JOGADA
@@ -263,9 +262,8 @@ class truco_interface(ft.Column):
         # Carta jogada pelo jogador 1
         carta1 = self.get_card_info(self.cartas_no_slot_jogada[0])
 
-        # Bot escolhe a primeira carta da sua mão (jogador 2)
         if self.cartas_jogador2:
-            modo = random.choices(["agressivo", "leve", "aleatorio"], weights=[0.3, 0.3, 0.4])[0]
+            modo = random.choices(["agressivo", "leve", "aleatorio"], weights=[0.8, 0.1, 0.1])[0]
 
             bot = Bot(self.cartas_jogador2, self.manilha.data, modo=modo)
             carta_bot = bot.escolher_carta(carta_adversario=carta1, j1_tem_ponto=self.win_rodadas_j1 == 1)
@@ -277,20 +275,21 @@ class truco_interface(ft.Column):
                 width=70,
                 data=carta_bot
             )
-
-            # Atualiza a mão visual do jogador 2 (mostrar as cartas restantes)
+            
             nova_mao_j2 = []
             for i, c in enumerate(self.cartas_jogador2):
                 nova_mao_j2.append(self.criar_carta(c, jogador=2))
 
-            # Se quiser mostrar até 3 slots (com espaços vazios)
             while len(nova_mao_j2) < 3:
                 nova_mao_j2.append(ft.Container(width=70, height=100, border=ft.border.all(2, ft.Colors.GREY), border_radius=5))
 
-            self.jogador2_container.controls[1] = ft.Row(nova_mao_j2, spacing=20, alignment=ft.MainAxisAlignment.CENTER)
-
+            #self.jogador2_container.controls[1] = ft.Row(nova_mao_j2, spacing=20, alignment=ft.MainAxisAlignment.CENTER)
+            self.jogador2_container.controls = [
+                ft.Text("Jogador 2:"),
+                ft.Row(nova_mao_j2, spacing=20, alignment=ft.MainAxisAlignment.CENTER)
+            ]
+    
         else:
-            # Caso não tenha carta, esvazia o slot do bot
             self.slot_jogada_bot.content = None
             print('TESTE QUE O SLOT DO BOT NÃO ESTA RECEBENDO NADA')
 
@@ -329,7 +328,6 @@ class truco_interface(ft.Column):
             else:
                 self.pontos_j2 += self.valor_truco_atual
 
-            # Reseta o valor do truco para 1 após o término da rodada
             self.valor_truco_atual = 1
             self.btn_truco.text = "Pedir Truco"
 
@@ -338,7 +336,7 @@ class truco_interface(ft.Column):
             self.win_rodadas_j2 = 0
 
             # Atualiza placares
-            self.placar_jogo.value = f"Jogador 1 - {self.pontos_j1} |\---/| Jogador 2 - {self.pontos_j2}"
+            self.placar_jogo.value = f"Jogador 1 - {self.pontos_j1} --- Jogador 2 - {self.pontos_j2}"
             self.placar_rodada.value = f"Jogador 1 - {self.win_rodadas_j1}\nJogador 2 - {self.win_rodadas_j2}"
 
             self.page.run_task(self.nova_rodada)
@@ -355,10 +353,7 @@ class truco_interface(ft.Column):
 
         self.page.update()
 
-        # Verifica se acabou as cartas (fim da rodada)
         if not self.cartas_jogador1 or not self.cartas_jogador2:
-            self.page.snack_bar = ft.SnackBar(ft.Text("Fim da rodada! Embaralhando novas cartas..."))
-            self.page.snack_bar.open = True
             self.page.update()
             self.page.run_task(self.nova_rodada)  # roda nova rodada com delay
 
@@ -375,6 +370,8 @@ class truco_interface(ft.Column):
     async def nova_rodada(self):
         import asyncio
         await asyncio.sleep(1)
+        self.slot_jogada.content = None
+        self.slot_jogada_bot.content = None
         self.atualizar_cartas()
 
         # Se for a vez do bot começar
@@ -391,9 +388,10 @@ class truco_interface(ft.Column):
                 data=carta_bot
             )
             self.page.update()
+            self.slot_jogada_bot.content = None
+            self.page.update()
     
     def pedir_truco(self, e):
-        # Define a próxima pontuação do Truco
         proximo_valor = {1: 3, 3: 6, 6: 9, 9: 12}
         if self.valor_truco_atual not in proximo_valor:
             self.page.snack_bar = ft.SnackBar(ft.Text("Já está no valor máximo de Truco!"))
@@ -404,7 +402,7 @@ class truco_interface(ft.Column):
         novo_valor = proximo_valor[self.valor_truco_atual]
 
         # Bot decide se aceita
-        aceitou = random.random() < 0.3  
+        aceitou = random.random() < 0.9  
 
         if aceitou:
             self.valor_truco_atual = novo_valor
@@ -414,8 +412,7 @@ class truco_interface(ft.Column):
             self.page.snack_bar = ft.SnackBar(ft.Text("Bot correu! Você ganhou a rodada."))
             self.pontos_j1 += self.valor_truco_atual
 
-            # Atualiza placar e reseta rodada
-            self.placar_jogo.value = f"Jogador 1 - {self.pontos_j1} |\---/| Jogador 2 - {self.pontos_j2}"
+            self.placar_jogo.value = f"Jogador 1 - {self.pontos_j1} ----- Jogador 2 - {self.pontos_j2}"
             self.win_rodadas_j1 = 0
             self.win_rodadas_j2 = 0
             self.valor_truco_atual = 1
@@ -424,3 +421,4 @@ class truco_interface(ft.Column):
 
         self.page.snack_bar.open = True
         self.page.update()
+    
